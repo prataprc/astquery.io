@@ -1,24 +1,21 @@
-title: Your awesome title
-author: GitHub User
-email: your-email@domain.com
+title: Querying Abstract Syntax Tree
+#author: prataprc
 description: > # this means to ignore newlines until "baseurl:"
-  Write an awesome description for your new site here. You can edit this
-  line in _config.yml. It will appear in your document head meta (for
-  Google search results) and in your feed.xml site description.
-
+timezone: Asia/Colombo
+baseurl: "/astquery.io" # the subpath of your site, e.g. /blog
+url: "" # the base hostname & protocol for your site, e.g. http://example.com
 social_sites:
-  twitter: jekyllrb
-  github:  jekyll
+  #github:  prataprc
+  #linkedin: prataprc
   #dribbble: jekyll
   #facebook: jekyll
   #flickr: jekyll
   #instagram: jekyll
-  #linkedin: jekyll
   #pinterest: jekyll
   #youtube: jekyll
   #googleplus: +jekyll
 
-rss: rss
+rss:
 
 # Minima date format
 # refer to http://shopify.github.io/liquid/filters/date/ if you want to customize this
@@ -36,3 +33,5 @@ theme: minima
 exclude:
   - Gemfile
   - Gemfile.lock
+plugins:
+  - jekyll-seo-tag
