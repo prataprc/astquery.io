@@ -1,0 +1,482 @@
+<!DOCTYPE html>
+<html lang="en">
+
+  <head>
+  <meta charset="utf-8">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <!-- Begin Jekyll SEO tag v2.3.0 -->
+<title>Querying Abstract Syntax Tree</title>
+<meta property="og:title" content="Querying Abstract Syntax Tree" />
+<meta property="og:locale" content="en_US" />
+<link rel="canonical" href="http://localhost:4000/astquery.io/" />
+<meta property="og:url" content="http://localhost:4000/astquery.io/" />
+<meta property="og:site_name" content="Querying Abstract Syntax Tree" />
+<script type="application/ld+json">
+{"name":"Querying Abstract Syntax Tree","description":null,"author":null,"@type":"WebSite","url":"http://localhost:4000/astquery.io/","publisher":null,"image":null,"headline":"Querying Abstract Syntax Tree","dateModified":null,"datePublished":null,"sameAs":null,"mainEntityOfPage":null,"@context":"http://schema.org"}</script>
+<!-- End Jekyll SEO tag -->
+
+  <link rel="stylesheet" href="/astquery.io/assets/main.css">
+  <link rel="alternate" type="application/rss+xml" title="Querying Abstract Syntax Tree" href="/astquery.io/feed.xml">
+  
+</head>
+
+
+  <body>
+
+    <header class="site-header" role="banner">
+
+  <div class="wrapper">
+    
+    
+    <a class="site-title" rel="author" href="/astquery.io/">Querying Abstract Syntax Tree</a>
+
+    
+      <nav class="site-nav">
+        <input type="checkbox" id="nav-trigger" class="nav-trigger" />
+        <label for="nav-trigger">
+          <span class="menu-icon">
+            <svg viewBox="0 0 18 15" width="18px" height="15px">
+              <path fill="#424242" d="M18,1.484c0,0.82-0.665,1.484-1.484,1.484H1.484C0.665,2.969,0,2.304,0,1.484l0,0C0,0.665,0.665,0,1.484,0 h15.031C17.335,0,18,0.665,18,1.484L18,1.484z"/>
+              <path fill="#424242" d="M18,7.516C18,8.335,17.335,9,16.516,9H1.484C0.665,9,0,8.335,0,7.516l0,0c0-0.82,0.665-1.484,1.484-1.484 h15.031C17.335,6.031,18,6.696,18,7.516L18,7.516z"/>
+              <path fill="#424242" d="M18,13.516C18,14.335,17.335,15,16.516,15H1.484C0.665,15,0,14.335,0,13.516l0,0 c0-0.82,0.665-1.484,1.484-1.484h15.031C17.335,12.031,18,12.696,18,13.516L18,13.516z"/>
+            </svg>
+          </span>
+        </label>
+
+        <div class="trigger">
+          
+            
+            
+          
+            
+            
+          
+            
+            
+          
+        </div>
+      </nav>
+    
+  </div>
+</header>
+
+
+    <main class="page-content" aria-label="Content">
+      <div class="wrapper">
+        <div class="home">
+  
+
+  <p>ASTQuery is the simple idea of applying CSS selectors on
+<a href="https://en.wikipedia.org/wiki/Abstract_syntax_tree">Abstract Syntax Tree</a>.</p>
+
+<p>Abstract Syntax Tree (AST) is constructed by parsing i/p text stream for
+tokens and organizing tokens as a tree of Terminal nodes and NonTerminal nodes.
+Typically, Terminal nodes are leaf nodes holding a token of symbols from
+input stream. And NonTerminals are intermediate nodes that are constructed
+using other intermediate and leaf nodes.</p>
+
+<p>After parsing input text into AST, tree processing and/or transformation
+algorithms are applied. There are two popular techniques used to parse
+symbols of text and convert them to AST, one is using
+<a href="https://en.wikipedia.org/wiki/LALR_parser">LALR</a> technique and the other is using
+<a href="https://en.wikipedia.org/wiki/Parser_combinator">Parser Combinator</a>. For our case we are going to
+use parser-combinator technique, more specifically we will be using a
+golang implementation of parser combinator, <a href="https://github.com/prataprc/goparsec">goparsec</a>.</p>
+
+<h2 id="composing-a-parser-using-goparsec">Composing a parser using goparsec</h2>
+
+<p>Below code is in <a href="http://golang.org">go-language</a> with which goparsec is
+authored. We shall compose a parser using goparsec to parse a well formed
+HTML text, if you are keen to understand how the parser is composed please
+refer to its <a href="https://godoc.org/github.com/prataprc/goparsec">godoc-site</a>. Going forward it is enough
+to assume that <code class="highlighter-rouge">makehtmly</code> constructs and returns a HTML parser function
+that can be used to parse a well formed HTML text.</p>
+
+<div class="language-go highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="k">func</span><span class="x"> </span><span class="n">makehtmly</span><span class="p">(</span><span class="n">ast</span><span class="x"> </span><span class="o">*</span><span class="n">AST</span><span class="p">)</span><span class="x"> </span><span class="n">Parser</span><span class="x"> </span><span class="p">{</span><span class="x">
+  </span><span class="k">var</span><span class="x"> </span><span class="n">tag</span><span class="x"> </span><span class="n">Parser</span><span class="x">
+
+  </span><span class="c">// terminal parsers.</span><span class="x">
+  </span><span class="n">tagobrk</span><span class="x"> </span><span class="o">:=</span><span class="x"> </span><span class="n">Atom</span><span class="p">(</span><span class="s">"&lt;"</span><span class="p">,</span><span class="x"> </span><span class="s">"OT"</span><span class="p">)</span><span class="x">
+  </span><span class="n">tagcbrk</span><span class="x"> </span><span class="o">:=</span><span class="x"> </span><span class="n">Atom</span><span class="p">(</span><span class="s">"&gt;"</span><span class="p">,</span><span class="x"> </span><span class="s">"CT"</span><span class="p">)</span><span class="x">
+  </span><span class="n">tagcend</span><span class="x"> </span><span class="o">:=</span><span class="x"> </span><span class="n">Atom</span><span class="p">(</span><span class="s">"/&gt;"</span><span class="p">,</span><span class="x"> </span><span class="s">"CT"</span><span class="p">)</span><span class="x">
+  </span><span class="n">tagcopen</span><span class="x"> </span><span class="o">:=</span><span class="x"> </span><span class="n">Atom</span><span class="p">(</span><span class="s">"&lt;/"</span><span class="p">,</span><span class="x"> </span><span class="s">"CT"</span><span class="p">)</span><span class="x">
+  </span><span class="n">equal</span><span class="x"> </span><span class="o">:=</span><span class="x"> </span><span class="n">Atom</span><span class="p">(</span><span class="s">`=`</span><span class="p">,</span><span class="x"> </span><span class="s">"EQ"</span><span class="p">)</span><span class="x">
+  </span><span class="n">single</span><span class="x"> </span><span class="o">:=</span><span class="x"> </span><span class="n">Atom</span><span class="p">(</span><span class="s">"'"</span><span class="p">,</span><span class="x"> </span><span class="s">"SQUOTE"</span><span class="p">)</span><span class="x">
+  </span><span class="n">double</span><span class="x"> </span><span class="o">:=</span><span class="x"> </span><span class="n">Atom</span><span class="p">(</span><span class="s">`"`</span><span class="p">,</span><span class="x"> </span><span class="s">"DQUOTE"</span><span class="p">)</span><span class="x">
+  </span><span class="n">tagname</span><span class="x"> </span><span class="o">:=</span><span class="x"> </span><span class="n">Token</span><span class="p">(</span><span class="s">`[a-zA-Z0-9]+`</span><span class="p">,</span><span class="x"> </span><span class="s">"TAGNAME"</span><span class="p">)</span><span class="x">
+  </span><span class="n">attrname</span><span class="x"> </span><span class="o">:=</span><span class="x"> </span><span class="n">Token</span><span class="p">(</span><span class="s">`[a-zA-Z0-9_-]+`</span><span class="p">,</span><span class="x"> </span><span class="s">"ATTRNAME"</span><span class="p">)</span><span class="x">
+  </span><span class="n">attrval1</span><span class="x"> </span><span class="o">:=</span><span class="x"> </span><span class="n">Token</span><span class="p">(</span><span class="s">`[^\s"'=&lt;&gt;`</span><span class="o">+</span><span class="s">"`]+"</span><span class="p">,</span><span class="x"> </span><span class="s">"ATTRVAL1"</span><span class="p">)</span><span class="x">
+  </span><span class="n">attrval2</span><span class="x"> </span><span class="o">:=</span><span class="x"> </span><span class="n">Token</span><span class="p">(</span><span class="s">`[^']*`</span><span class="p">,</span><span class="x"> </span><span class="s">"ATTRVAL2"</span><span class="p">)</span><span class="x">
+  </span><span class="n">attrval3</span><span class="x"> </span><span class="o">:=</span><span class="x"> </span><span class="n">Token</span><span class="p">(</span><span class="s">`[^"]*`</span><span class="p">,</span><span class="x"> </span><span class="s">"ATTRVAL3"</span><span class="p">)</span><span class="x">
+  </span><span class="n">entity</span><span class="x"> </span><span class="o">:=</span><span class="x"> </span><span class="n">Token</span><span class="p">(</span><span class="s">`&amp;#?[a-bA-Z0-9]+;`</span><span class="p">,</span><span class="x"> </span><span class="s">"ENTITY"</span><span class="p">)</span><span class="x">
+  </span><span class="n">text</span><span class="x"> </span><span class="o">:=</span><span class="x"> </span><span class="n">Token</span><span class="p">(</span><span class="s">`[^&lt;]+`</span><span class="p">,</span><span class="x"> </span><span class="s">"TEXT"</span><span class="p">)</span><span class="x">
+  </span><span class="n">doctype</span><span class="x"> </span><span class="o">:=</span><span class="x"> </span><span class="n">Token</span><span class="p">(</span><span class="s">`&lt;!doctype[^&gt;]+&gt;`</span><span class="p">,</span><span class="x"> </span><span class="s">"DOCTYPE"</span><span class="p">)</span><span class="x">
+
+  </span><span class="c">// parse tag attributes</span><span class="x">
+  </span><span class="n">attrunquoted</span><span class="x"> </span><span class="o">:=</span><span class="x"> </span><span class="n">ast</span><span class="o">.</span><span class="n">And</span><span class="p">(</span><span class="x">
+      </span><span class="s">"attrunquoted"</span><span class="p">,</span><span class="x"> </span><span class="no">nil</span><span class="p">,</span><span class="x"> </span><span class="n">attrname</span><span class="p">,</span><span class="x"> </span><span class="n">equal</span><span class="p">,</span><span class="x"> </span><span class="n">attrval1</span><span class="p">,</span><span class="x">
+  </span><span class="p">)</span><span class="x">
+  </span><span class="n">attrsingleq</span><span class="x"> </span><span class="o">:=</span><span class="x"> </span><span class="n">ast</span><span class="o">.</span><span class="n">And</span><span class="p">(</span><span class="x">
+      </span><span class="s">"attrsingleq"</span><span class="p">,</span><span class="x"> </span><span class="no">nil</span><span class="p">,</span><span class="x"> </span><span class="n">attrname</span><span class="p">,</span><span class="x"> </span><span class="n">equal</span><span class="p">,</span><span class="x"> </span><span class="n">single</span><span class="p">,</span><span class="x"> </span><span class="n">attrval2</span><span class="p">,</span><span class="x"> </span><span class="n">single</span><span class="p">,</span><span class="x">
+  </span><span class="p">)</span><span class="x">
+  </span><span class="n">attrdoubleq</span><span class="x"> </span><span class="o">:=</span><span class="x"> </span><span class="n">ast</span><span class="o">.</span><span class="n">And</span><span class="p">(</span><span class="x">
+      </span><span class="s">"attrdoubleq"</span><span class="p">,</span><span class="x"> </span><span class="no">nil</span><span class="p">,</span><span class="x"> </span><span class="n">attrname</span><span class="p">,</span><span class="x"> </span><span class="n">equal</span><span class="p">,</span><span class="x"> </span><span class="n">double</span><span class="p">,</span><span class="x"> </span><span class="n">attrval3</span><span class="p">,</span><span class="x"> </span><span class="n">double</span><span class="p">,</span><span class="x">
+  </span><span class="p">)</span><span class="x">
+  </span><span class="n">attr</span><span class="x"> </span><span class="o">:=</span><span class="x"> </span><span class="n">ast</span><span class="o">.</span><span class="n">OrdChoice</span><span class="p">(</span><span class="x">
+      </span><span class="s">"attribute"</span><span class="p">,</span><span class="x"> </span><span class="no">nil</span><span class="p">,</span><span class="x"> </span><span class="n">attrsingleq</span><span class="p">,</span><span class="x"> </span><span class="n">attrdoubleq</span><span class="p">,</span><span class="x"> </span><span class="n">attrunquoted</span><span class="p">,</span><span class="x"> </span><span class="n">attrname</span><span class="p">,</span><span class="x">
+  </span><span class="p">)</span><span class="x">
+  </span><span class="n">attrs</span><span class="x"> </span><span class="o">:=</span><span class="x"> </span><span class="n">ast</span><span class="o">.</span><span class="n">Kleene</span><span class="p">(</span><span class="s">"attributes"</span><span class="p">,</span><span class="x"> </span><span class="no">nil</span><span class="p">,</span><span class="x"> </span><span class="n">attr</span><span class="p">,</span><span class="x"> </span><span class="no">nil</span><span class="p">)</span><span class="x">
+
+  </span><span class="c">// parse tags</span><span class="x">
+  </span><span class="n">tagopen</span><span class="x"> </span><span class="o">:=</span><span class="x"> </span><span class="n">ast</span><span class="o">.</span><span class="n">And</span><span class="p">(</span><span class="s">"tagopen"</span><span class="p">,</span><span class="x"> </span><span class="no">nil</span><span class="p">,</span><span class="x"> </span><span class="n">tagobrk</span><span class="p">,</span><span class="x"> </span><span class="n">tagname</span><span class="p">,</span><span class="x"> </span><span class="n">attrs</span><span class="p">,</span><span class="x"> </span><span class="n">tagcbrk</span><span class="p">)</span><span class="x">
+  </span><span class="n">tagclose</span><span class="x"> </span><span class="o">:=</span><span class="x"> </span><span class="n">ast</span><span class="o">.</span><span class="n">And</span><span class="p">(</span><span class="s">"tagclose"</span><span class="p">,</span><span class="x"> </span><span class="no">nil</span><span class="p">,</span><span class="x"> </span><span class="n">tagcopen</span><span class="p">,</span><span class="x"> </span><span class="n">tagname</span><span class="p">,</span><span class="x"> </span><span class="n">tagcbrk</span><span class="p">)</span><span class="x">
+
+  </span><span class="c">// parse tags and text</span><span class="x">
+  </span><span class="n">content</span><span class="x"> </span><span class="o">:=</span><span class="x"> </span><span class="n">ast</span><span class="o">.</span><span class="n">OrdChoice</span><span class="p">(</span><span class="s">"content"</span><span class="p">,</span><span class="x"> </span><span class="no">nil</span><span class="p">,</span><span class="x"> </span><span class="n">entity</span><span class="p">,</span><span class="x"> </span><span class="n">text</span><span class="p">,</span><span class="x"> </span><span class="o">&amp;</span><span class="n">tag</span><span class="p">)</span><span class="x">
+  </span><span class="n">contents</span><span class="x"> </span><span class="o">:=</span><span class="x"> </span><span class="n">ast</span><span class="o">.</span><span class="n">Maybe</span><span class="p">(</span><span class="x">
+      </span><span class="s">"maybecontents"</span><span class="p">,</span><span class="x"> </span><span class="no">nil</span><span class="p">,</span><span class="x"> </span><span class="n">ast</span><span class="o">.</span><span class="n">Kleene</span><span class="p">(</span><span class="s">"contents"</span><span class="p">,</span><span class="x"> </span><span class="no">nil</span><span class="p">,</span><span class="x"> </span><span class="n">content</span><span class="p">,</span><span class="x"> </span><span class="no">nil</span><span class="p">),</span><span class="x">
+  </span><span class="p">)</span><span class="x">
+
+  </span><span class="c">// parse HTML text</span><span class="x">
+  </span><span class="n">tagempty</span><span class="x"> </span><span class="o">:=</span><span class="x"> </span><span class="n">ast</span><span class="o">.</span><span class="n">And</span><span class="p">(</span><span class="s">"tagempty"</span><span class="p">,</span><span class="x"> </span><span class="no">nil</span><span class="p">,</span><span class="x"> </span><span class="n">tagobrk</span><span class="p">,</span><span class="x"> </span><span class="n">tagname</span><span class="p">,</span><span class="x"> </span><span class="n">attrs</span><span class="p">,</span><span class="x"> </span><span class="n">tagcend</span><span class="p">)</span><span class="x">
+  </span><span class="n">tagproper</span><span class="x"> </span><span class="o">:=</span><span class="x"> </span><span class="n">ast</span><span class="o">.</span><span class="n">And</span><span class="p">(</span><span class="s">"tagproper"</span><span class="p">,</span><span class="x"> </span><span class="no">nil</span><span class="p">,</span><span class="x"> </span><span class="n">tagopen</span><span class="p">,</span><span class="x"> </span><span class="n">contents</span><span class="p">,</span><span class="x"> </span><span class="n">tagclose</span><span class="p">)</span><span class="x">
+  </span><span class="n">tag</span><span class="x"> </span><span class="o">=</span><span class="x"> </span><span class="n">ast</span><span class="o">.</span><span class="n">OrdChoice</span><span class="p">(</span><span class="s">"tag"</span><span class="p">,</span><span class="x"> </span><span class="no">nil</span><span class="p">,</span><span class="x"> </span><span class="n">doctype</span><span class="p">,</span><span class="x"> </span><span class="n">tagempty</span><span class="p">,</span><span class="x"> </span><span class="n">tagproper</span><span class="p">)</span><span class="x">
+  </span><span class="k">return</span><span class="x"> </span><span class="n">ast</span><span class="o">.</span><span class="n">Kleene</span><span class="p">(</span><span class="s">"html"</span><span class="p">,</span><span class="x"> </span><span class="no">nil</span><span class="p">,</span><span class="x"> </span><span class="n">tag</span><span class="p">,</span><span class="x"> </span><span class="no">nil</span><span class="p">)</span><span class="x">
+</span><span class="p">}</span><span class="x">
+</span></code></pre></div></div>
+
+<p>With above parser let us try to parse as simple html text:</p>
+
+<div class="language-html highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="nt">&lt;html&gt;</span>
+    <span class="nt">&lt;body&gt;</span> <span class="nt">&lt;h1&gt;</span>My First Heading<span class="nt">&lt;/h1&gt;</span> <span class="nt">&lt;p&gt;</span>My first paragraph.<span class="nt">&lt;/p&gt;</span> <span class="nt">&lt;/body&gt;</span>
+<span class="nt">&lt;/html&gt;</span>
+</code></pre></div></div>
+
+<p>Following code, again authored in go-language, parses <code class="highlighter-rouge">data</code> that contain
+the html text using the <code class="highlighter-rouge">ast-object</code>. After the call to <code class="highlighter-rouge">Parsewith()</code>,
+ast-object will hold on to the root node of the parse tree. We can use the
+Dotstring() method to generate a graph-visualization for the entire parse
+tree. Note that in the constructed parser we use goparsec’s Terminal
+and NonTerminal types for leaf nodes and intermediate nodes.</p>
+
+<div class="language-go highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="x">  </span><span class="n">ast</span><span class="x"> </span><span class="o">:=</span><span class="x"> </span><span class="n">NewAST</span><span class="p">(</span><span class="s">"html"</span><span class="p">,</span><span class="x"> </span><span class="m">100</span><span class="p">)</span><span class="x">
+  </span><span class="n">y</span><span class="x"> </span><span class="o">:=</span><span class="x"> </span><span class="n">makehtmly</span><span class="p">(</span><span class="n">ast</span><span class="p">)</span><span class="x">
+  </span><span class="n">s</span><span class="x"> </span><span class="o">:=</span><span class="x"> </span><span class="n">NewScanner</span><span class="p">(</span><span class="n">data</span><span class="p">)</span><span class="o">.</span><span class="n">TrackLineno</span><span class="p">()</span><span class="x">
+  </span><span class="n">ast</span><span class="o">.</span><span class="n">Parsewith</span><span class="p">(</span><span class="n">y</span><span class="p">,</span><span class="x"> </span><span class="n">s</span><span class="p">)</span><span class="x">
+  </span><span class="n">graph</span><span class="x"> </span><span class="o">:=</span><span class="x"> </span><span class="n">ast</span><span class="o">.</span><span class="n">Dotstring</span><span class="p">(</span><span class="s">"simplehtml"</span><span class="p">)</span><span class="x">
+</span></code></pre></div></div>
+
+<p>Parse tree constructed using our parser for the example html text is rendered
+below. This tree is called Abstract Syntax Tree.</p>
+
+<p><img src="media/simplehtml.svg" alt="dotgraph" /></p>
+
+<h2 id="nodes-and-attributes">Nodes and attributes</h2>
+
+<p>Now that we have got an example Abstract Syntax Tree to play with, let us turn
+our attention to nodes within the Abstract Syntax Tree and explore what it
+is made of.</p>
+
+<p>In general, irrespective of the language used to parse the text, AST should
+be made of NonTerminal nodes (intermediate nodes) and Terminal nodes (leaf
+nodes). Nodes can either be a Terminal node or a NonTerminal node, also called
+as leaf-node or intermediate-node. Typically, leaf-nodes are parsed by
+tokenizers and intermediate-nodes are parsed by combinators. In the
+Lex-and-Yacc parlance, we can say that leaf-nodes are parsed by lexers
+and intermediate-nodes are parsed by yaccer.</p>
+
+<p>First step in AST Query is to enable algorithms to walk through the tree,
+and, subsequently algorithms should be able to query each node for matchable
+selectors. To facilitate this, let us attach some behaviors to Terminal and
+NonTerminal nodes and call the collection of behaviors as <code class="highlighter-rouge">Queryable</code></p>
+
+<div class="language-go highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c">// Queryable interface to be implemented by all nodes, both terminal</span><span class="x">
+</span><span class="c">// and non-terminal nodes within Abstract Syntax Tree.</span><span class="x">
+</span><span class="k">type</span><span class="x"> </span><span class="n">Queryable</span><span class="x"> </span><span class="k">interface</span><span class="x"> </span><span class="p">{</span><span class="x">
+	</span><span class="c">// GetValue return parsed text, if node is NonTerminal it will</span><span class="x">
+	</span><span class="c">// concat the entire sub-tree for parsed text and return the same.</span><span class="x">
+	</span><span class="n">GetValue</span><span class="p">()</span><span class="x"> </span><span class="kt">string</span><span class="x">
+
+	</span><span class="c">// GetChildren relevant only for NonTerminal node.</span><span class="x">
+	</span><span class="n">GetChildren</span><span class="p">()</span><span class="x"> </span><span class="p">[]</span><span class="n">Queryable</span><span class="x">
+
+	</span><span class="c">// SetAttribute with a value string, can be called multiple times for the</span><span class="x">
+	</span><span class="c">// same attrname.</span><span class="x">
+	</span><span class="n">SetAttribute</span><span class="p">(</span><span class="n">attrname</span><span class="p">,</span><span class="x"> </span><span class="n">value</span><span class="x"> </span><span class="kt">string</span><span class="p">)</span><span class="x"> </span><span class="n">Queryable</span><span class="x">
+
+	</span><span class="c">// GetAttribute for attrname, since more than one value can be set on the</span><span class="x">
+	</span><span class="c">// attribute, return a slice of values.</span><span class="x">
+	</span><span class="n">GetAttribute</span><span class="p">(</span><span class="n">attrname</span><span class="x"> </span><span class="kt">string</span><span class="p">)</span><span class="x"> </span><span class="p">[]</span><span class="kt">string</span><span class="x">
+
+	</span><span class="c">// GetAttributes return a map of all attributes set on this node.</span><span class="x">
+	</span><span class="n">GetAttributes</span><span class="p">()</span><span class="x"> </span><span class="k">map</span><span class="p">[</span><span class="kt">string</span><span class="p">][]</span><span class="kt">string</span><span class="x">
+</span><span class="p">}</span><span class="x">
+</span></code></pre></div></div>
+
+<p>There are two aspects to a node that are important for <code class="highlighter-rouge">selector</code>
+specification:</p>
+
+<ol>
+  <li><strong>Name</strong>, name of the node, node names are case-insensitive, should begin
+with English alphabet, and contain only alphanumeric characters.</li>
+  <li><strong>Attributes</strong>, any number of attributes can be attached to a node. Node
+attributes are case-insensitive, should begin with English alphabet, and
+contain only alphanumeric characters.</li>
+</ol>
+
+<p><strong>node name</strong></p>
+
+<p>Each node in the syntax-tree, that are constructed using the same tokenizer
+or combinator, can be given a unique name. For instance, with goparsec:</p>
+
+<div class="language-go highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="n">equal</span><span class="x"> </span><span class="o">:=</span><span class="x"> </span><span class="n">parsec</span><span class="o">.</span><span class="n">Atom</span><span class="p">(</span><span class="s">`=`</span><span class="p">,</span><span class="x"> </span><span class="s">"EQUAL"</span><span class="p">)</span><span class="x"> </span><span class="c">// parse comma as a terminal token.</span><span class="x">
+</span></code></pre></div></div>
+
+<p>The second argument <code class="highlighter-rouge">EQUAL</code> is the name of the tokenizer. And all nodes
+constructed using this tokenizer will be named as <code class="highlighter-rouge">EQUAL</code>.</p>
+
+<p>Similarly, to construct nonterminal-node <code class="highlighter-rouge">tagopen</code>.</p>
+
+<div class="language-go highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="n">tagopen</span><span class="x"> </span><span class="o">:=</span><span class="x"> </span><span class="n">ast</span><span class="o">.</span><span class="n">And</span><span class="p">(</span><span class="s">"tagopen"</span><span class="p">,</span><span class="x"> </span><span class="no">nil</span><span class="p">,</span><span class="x"> </span><span class="n">tagobrk</span><span class="p">,</span><span class="x"> </span><span class="n">tagname</span><span class="p">,</span><span class="x"> </span><span class="n">attrs</span><span class="p">,</span><span class="x"> </span><span class="n">tagcbrk</span><span class="p">)</span><span class="x">
+</span></code></pre></div></div>
+
+<p>The first argument to the <code class="highlighter-rouge">And</code> combinator is the name of this combinator.
+And all intermediate-nodes constructed using this combinator will be named
+as <code class="highlighter-rouge">tagopen</code>.</p>
+
+<p><strong>node attributes</strong></p>
+
+<p>The second aspect of a node is its <code class="highlighter-rouge">attributes</code>. Each node can have any
+number of attributes attached to a node. Some attributes are automatically
+attached by tokenizers and combinators, these are called default-attributes,
+while others can be attached using the Queryable API SetAttribute().</p>
+
+<p>In some sense, node attributes can be seen as {key,[]value} properties of a
+node, where key is the node’s attribute-name and value is the
+attribute-value. Since more than one value can be set for the same attribute
+we are denoting it as <code class="highlighter-rouge">[]value</code> (array of value).</p>
+
+<h2 id="default-attributes">Default attributes</h2>
+
+<p><strong>class attribute</strong></p>
+
+<p>Every node carry at least one class attribute. If it is intermediate-node,
+its <code class="highlighter-rouge">class</code> attribute is set to <code class="highlighter-rouge">nonterm</code>.  If it is leaf-node,
+its <code class="highlighter-rouge">class</code> attribute is set to <code class="highlighter-rouge">term</code>. User specified values for <code class="highlighter-rouge">class</code>
+attribute should start with English character and contain - alphabets,
+numbers, hyphen and underscore.</p>
+
+<p><strong>value attribute</strong></p>
+
+<p>Every node has an underlying value which is a sub-set of parsed input-text.
+For a leaf-node, <code class="highlighter-rouge">value</code> is the text matched by the regular-expression
+used in tokenizer. For a intermediate-node, <code class="highlighter-rouge">value</code> is concatenation
+of all leaf-nodes’ values descending from that intermediate-node.</p>
+
+<h2 id="user-attributes">User-Attributes</h2>
+
+<p>User attributes can be programmatically accessed using <code class="highlighter-rouge">Queryable</code>
+behavior. More specifically, APIs like GetAttribute(), GetAttributes()
+and SetAttribute() can be used for accessing node’s attributes.</p>
+
+<p>Among the user-attributes, <strong>id attribute</strong> is treated as special. Because,
+like class, there is a short-hand notation for id. Similar to <code class="highlighter-rouge">class</code>
+attribute, user specified value for <code class="highlighter-rouge">id</code> attribute should start with
+English character, and contain - alphabets, numbers, hyphen and underscore.</p>
+
+<h2 id="selector-syntax-for-querying-ast">Selector syntax for querying AST</h2>
+
+<p>Scope of AST Query is to query syntax-tree for desired set of nodes, the query
+result, if successful, will return an iterable on selected nodes. In that
+sense, AST query is simply a <code class="highlighter-rouge">selector</code> specification into syntax-tree,
+similar to <a href="https://www.w3schools.com/cssref/css_selectors.asp">CSS selectors</a>
+into HTML DOM.</p>
+
+<p>Once we are comfortable with the concepts of, <code class="highlighter-rouge">syntax-tree</code>, <code class="highlighter-rouge">leaf-node</code>,
+<code class="highlighter-rouge">intermediate-node</code>, <code class="highlighter-rouge">name</code>, <code class="highlighter-rouge">attributes</code>, <code class="highlighter-rouge">value</code>, and <code class="highlighter-rouge">class</code>, we can
+use CSS like selector syntax to query for nodes within the Abstract Syntax
+Tree.</p>
+
+<p>To begin with, let us query for all textual content found in the our example
+HTML.</p>
+
+<div class="language-go highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="x">  </span><span class="n">ch</span><span class="x"> </span><span class="o">:=</span><span class="x"> </span><span class="nb">make</span><span class="p">(</span><span class="k">chan</span><span class="x"> </span><span class="n">Queryable</span><span class="p">,</span><span class="x"> </span><span class="m">100</span><span class="p">)</span><span class="x">
+  </span><span class="k">go</span><span class="x"> </span><span class="n">ast</span><span class="o">.</span><span class="n">Query</span><span class="p">(</span><span class="s">"TEXT"</span><span class="p">,</span><span class="x"> </span><span class="n">ch</span><span class="p">)</span><span class="x">
+  </span><span class="k">for</span><span class="x"> </span><span class="n">node</span><span class="x"> </span><span class="o">:=</span><span class="x"> </span><span class="k">range</span><span class="x"> </span><span class="n">ch</span><span class="x"> </span><span class="p">{</span><span class="x">
+    </span><span class="n">fmt</span><span class="o">.</span><span class="n">Println</span><span class="p">(</span><span class="n">node</span><span class="o">.</span><span class="n">GetValue</span><span class="p">())</span><span class="x">
+  </span><span class="p">}</span><span class="x">
+  </span><span class="c">// Output:</span><span class="x">
+  </span><span class="c">// My First Heading</span><span class="x">
+  </span><span class="c">// My first paragraph.</span><span class="x">
+</span></code></pre></div></div>
+
+<p><strong>Note that node-name is equivalent to html tag-name</strong></p>
+
+<p>To query for all terminal nodes, which actually make up the entire HTML input
+other than white space, we can use the <code class="highlighter-rouge">class</code> attribute.</p>
+
+<div class="language-go highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="x">  </span><span class="n">ch</span><span class="x"> </span><span class="o">:=</span><span class="x"> </span><span class="nb">make</span><span class="p">(</span><span class="k">chan</span><span class="x"> </span><span class="n">Queryable</span><span class="p">,</span><span class="x"> </span><span class="m">100</span><span class="p">)</span><span class="x">
+  </span><span class="k">go</span><span class="x"> </span><span class="n">ast</span><span class="o">.</span><span class="n">Query</span><span class="p">(</span><span class="s">".term"</span><span class="p">,</span><span class="x"> </span><span class="n">ch</span><span class="p">)</span><span class="x">
+  </span><span class="k">for</span><span class="x"> </span><span class="n">node</span><span class="x"> </span><span class="o">:=</span><span class="x"> </span><span class="k">range</span><span class="x"> </span><span class="n">ch</span><span class="x"> </span><span class="p">{</span><span class="x">
+    </span><span class="n">fmt</span><span class="o">.</span><span class="n">Printf</span><span class="p">(</span><span class="s">"%s"</span><span class="p">,</span><span class="x"> </span><span class="n">node</span><span class="o">.</span><span class="n">GetValue</span><span class="p">())</span><span class="x">
+  </span><span class="p">}</span><span class="x">
+  </span><span class="n">fmt</span><span class="o">.</span><span class="n">Println</span><span class="p">()</span><span class="x">
+
+  </span><span class="c">// Output:</span><span class="x">
+  </span><span class="c">// &lt;html&gt;&lt;body&gt;&lt;h1&gt;My First Heading&lt;/h1&gt;&lt;p&gt;My first paragraph.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</span><span class="x">
+</span></code></pre></div></div>
+
+<p>Let us try somthing more fancy. We will fetch an example site’s landing page
+and gather all the hyper-links found there.</p>
+
+<div class="language-go highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="x">  </span><span class="n">ast</span><span class="x"> </span><span class="o">:=</span><span class="x"> </span><span class="n">NewAST</span><span class="p">(</span><span class="s">"html"</span><span class="p">,</span><span class="x"> </span><span class="m">100</span><span class="p">)</span><span class="x">
+  </span><span class="n">y</span><span class="x"> </span><span class="o">:=</span><span class="x"> </span><span class="n">makehtmly</span><span class="p">(</span><span class="n">ast</span><span class="p">)</span><span class="x">
+  </span><span class="n">resp</span><span class="p">,</span><span class="x"> </span><span class="n">_</span><span class="x"> </span><span class="o">:=</span><span class="x"> </span><span class="n">http</span><span class="o">.</span><span class="n">Get</span><span class="p">(</span><span class="s">"https://example.com/"</span><span class="p">)</span><span class="x">
+  </span><span class="n">data</span><span class="p">,</span><span class="x"> </span><span class="n">_</span><span class="x"> </span><span class="o">:=</span><span class="x"> </span><span class="n">ioutil</span><span class="o">.</span><span class="n">ReadAll</span><span class="p">(</span><span class="n">resp</span><span class="o">.</span><span class="n">Body</span><span class="p">)</span><span class="x">
+
+  </span><span class="n">s</span><span class="x"> </span><span class="o">:=</span><span class="x"> </span><span class="n">NewScanner</span><span class="p">(</span><span class="n">data</span><span class="p">)</span><span class="o">.</span><span class="n">TrackLineno</span><span class="p">()</span><span class="x">
+  </span><span class="n">ast</span><span class="o">.</span><span class="n">Parsewith</span><span class="p">(</span><span class="n">y</span><span class="p">,</span><span class="x"> </span><span class="n">s</span><span class="p">)</span><span class="x">
+
+  </span><span class="n">ch</span><span class="x"> </span><span class="o">:=</span><span class="x"> </span><span class="nb">make</span><span class="p">(</span><span class="k">chan</span><span class="x"> </span><span class="n">Queryable</span><span class="p">,</span><span class="x"> </span><span class="m">100</span><span class="p">)</span><span class="x">
+  </span><span class="k">go</span><span class="x"> </span><span class="n">ast</span><span class="o">.</span><span class="n">Query</span><span class="p">(</span><span class="s">"attrunquoted,attrsingleq,attrdoubleq"</span><span class="p">,</span><span class="x"> </span><span class="n">ch</span><span class="p">)</span><span class="x">
+  </span><span class="k">for</span><span class="x"> </span><span class="n">node</span><span class="x"> </span><span class="o">:=</span><span class="x"> </span><span class="k">range</span><span class="x"> </span><span class="n">ch</span><span class="x"> </span><span class="p">{</span><span class="x">
+      </span><span class="n">cs</span><span class="x"> </span><span class="o">:=</span><span class="x"> </span><span class="n">node</span><span class="o">.</span><span class="n">GetChildren</span><span class="p">()</span><span class="x">
+      </span><span class="k">if</span><span class="x"> </span><span class="n">cs</span><span class="p">[</span><span class="m">0</span><span class="p">]</span><span class="o">.</span><span class="n">GetValue</span><span class="p">()</span><span class="x"> </span><span class="o">!=</span><span class="x"> </span><span class="s">"href"</span><span class="x"> </span><span class="p">{</span><span class="x">
+          </span><span class="k">continue</span><span class="x">
+      </span><span class="p">}</span><span class="x">
+      </span><span class="k">if</span><span class="x"> </span><span class="nb">len</span><span class="p">(</span><span class="n">cs</span><span class="p">)</span><span class="x"> </span><span class="o">==</span><span class="x"> </span><span class="m">3</span><span class="x"> </span><span class="p">{</span><span class="x">
+          </span><span class="n">fmt</span><span class="o">.</span><span class="n">Println</span><span class="p">(</span><span class="n">cs</span><span class="p">[</span><span class="m">2</span><span class="p">]</span><span class="o">.</span><span class="n">GetValue</span><span class="p">())</span><span class="x">
+      </span><span class="p">}</span><span class="x"> </span><span class="k">else</span><span class="x"> </span><span class="p">{</span><span class="x">
+          </span><span class="n">fmt</span><span class="o">.</span><span class="n">Println</span><span class="p">(</span><span class="n">cs</span><span class="p">[</span><span class="m">3</span><span class="p">]</span><span class="o">.</span><span class="n">GetValue</span><span class="p">())</span><span class="x">
+      </span><span class="p">}</span><span class="x">
+  </span><span class="p">}</span><span class="x">
+</span></code></pre></div></div>
+
+<h2 id="full-list-of-selector-specification">Full-list of selector specification</h2>
+
+<div class="language-text highlighter-rouge"><div class="highlight"><pre class="highlight"><code>
+Selector              | Example               | Description
+----------------------|-----------------------|---------------------------------
+.class                | .term                 | Selects all terminal nodes.
+#id                   | #firstname            | Selects the node with
+                      |                       | id="firstname".
+*                     | *                     | Selects all nodes.
+node,                 | comma                 | Selects all `comma` nodes.
+node, node            | comma, equal          | Selects all `comma` nodes and
+                      |                       | all `equal` nodes.
+node node             | attr equal            | Selects all `equal` nodes inside
+                      |                       | `attr`.
+node &gt; node           | tag &gt; tagname         | Selects all `tagname` node where
+                      |                       | the parent is a `tag` node.
+node + node           | oanglebrkt + tagname  | Selects all `tagname` node that
+                      |                       | are placed immediately after
+                      |                       | `oanglebrkt` elements.
+node ~ node           | tagname ~ canglebrkt  | Selects every `tagname` node that
+                      |                       | are preceded by `canglebrkt` node.
+[attribute]           | [ignore]              | Selects all nodes with a
+                      |                       | ignore attribute.
+[attribute=value]     | [title=xyz]           | Selects all nodes whose `title`
+                      |                       | attribute value is `xyz`.
+[attribute~=value]    | [title~=flower]       | Selects all nodes with a `title`
+                      |                       | attribute containing the word
+                      |                       | `flower`.
+[attribute^=value]    | tagname[title^=in]    | Selects every `tagname` node
+                      |                       | whose title attribute value
+                      |                       | begins with `in`.
+[attribute$=value]    | file[path$=.pdf]      | Selects every `file` node whose
+                      |                       | path attribute ends with `.pdf`.
+[attribute*=value]    | file[path*=usr|opt]   | Selects every `file` node whose
+                      |                       | path attribute value matches
+                      |                       | regular expression `usr|opt`
+:empty                | file:empty            | Selects every `file` node that
+                      |                       | has no children.
+:first-child          | comma:first-child     | Selects every `comma` node that
+                      |                       | is the first child of its parent.
+:first-of-type        | comma:first-of-type   | Selects every `comma` node that
+                      |                       | is the first `comma` node of
+                      |                       | its parent.
+:last-child           | comma:last-child      | Selects every `comma` node that
+                      |                       | is the last child of its parent.
+:last-of-type         | comma:last-of-type    | Selects every `comma` node that
+                      |                       | is the last `comma` node of its
+                      |                       | parent.
+:nth-child(n)         | comma:nth-child(2)    | Selects every `comma` node that
+                      |                       | is the second child of its
+                      |                       | parent.
+:nth-last-child(n)    | eq:nth-last-child(2)  | Selects every `eq` node that
+                      |                       | is the second child of its
+                      |                       | parent, counting from the last
+                      |                       | child.
+:nth-last-of-type(n)  | eq:nth-last-of-type(2)| Selects every `eq` node that
+                      |                       | is the second `eq` node of
+                      |                       | its parent, counting from the
+                      |                       | last child.
+:nth-of-type(n)       | eq:nth-of-type(2)     | Selects every `eq` node that
+                      |                       | is the second `eq` node of
+                      |                       | its parent.
+:only-of-type         | comma:only-of-type    | Selects every `comma` node that
+                      |                       | is the only `comma` node of its
+                      |                       | parent.
+:only-child           | comma:only-child      | Selects every `comma` node that
+                      |                       | is the only child of its parent.
+</code></pre></div></div>
+
+
+
+  
+
+</div>
+
+      </div>
+    </main>
+
+    <footer class="site-footer h-card">
+  <data class="u-url" href="/astquery.io/"></data>
+
+  <div class="wrapper">
+
+    <h2 class="footer-heading">Querying Abstract Syntax Tree</h2>
+
+    <div class="footer-col-wrapper">
+      <div class="footer-col footer-col-1">
+        <ul class="contact-list">
+          <li class="p-name">
+            
+              Querying Abstract Syntax Tree
+            
+            </li>
+            
+        </ul>
+      </div>
+
+      <div class="footer-col footer-col-2">
+        <span>&copy</span>2017 R Pratap Chakravarthy
+      </div>
+
+      <div class="footer-col footer-col-3">
+        <ul class="social-media-list">
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+</ul>
+
+      </div>
+    </div>
+
+  </div>
+
+</footer>
+
+
+  </body>
+
+</html>
