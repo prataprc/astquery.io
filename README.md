@@ -1,8 +1,6 @@
 README
 ======
 
-[![IRC #room7](https://www.irccloud.com/invite-svg?channel=%23room7&amp;hostname=irc.mozilla.org&amp;port=6667)](https://www.irccloud.com/invite?channel=%23room7&amp;hostname=irc.mozilla.org&amp;port=6667)
-
 This site is forked from Jekyll's minima layout. To set up this site, checkout
 this link.
 
